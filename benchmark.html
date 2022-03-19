@@ -19,8 +19,8 @@ const ERR_BIN_END   =  7;
 
 
 (async function(){
-  const response = await fetch("./GeodTest.dat");
-//  const response = await fetch("./GeodTest-short.dat");
+//  const response = await fetch("./GeodTest.dat");
+  const response = await fetch("./GeodTest-short.dat");
   const text = await response.text();
   
   const lines = text.split(/\n/);
