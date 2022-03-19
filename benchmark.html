@@ -3,7 +3,7 @@
 <head>
 <title>Geodesic Distance Formulae Benchmark</title>
 </head>
-<script src="havesine.js"></script>
+<script src="haversine.js"></script>
 <script src="hubeny_simple.js"></script>
 <script src="hubeny_series.js"></script>
 <script src="gsidistance.js"></script>
@@ -79,7 +79,7 @@ function measureError(funcname){
 
 function startBenchmark(){
   const funcs = [
-    "havesine", 
+    "haversine", 
     "gsidistance", 
     "hubeny", /*"hubeny1", "hubeny2", "hubeny3", */"hubeny4", 
     "vincenty", 
