@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Geodesic Distance Formulae Benchmark</title>
+</head>
+<script src="havesine.js"></script>
+<script src="hubeny_simple.js"></script>
+<script src="hubeny_series.js"></script>
+<script src="gsidistance.js"></script>
+<script src="vincenty.js"></script>
+<script src="lambert.js"></script>
+<script src="andoyerlambert.js"></script>
+<script src="andoyerlambertthomas.js"></script>
+<script>
+"use strict";
+let testdata = [];
+const ERR_BIN_START = -4;
+const ERR_BIN_END   =  7;
+
+
+(async function(){
+  const response = await fetch("./GeodTest.dat");
+//  const response = await fetch("./GeodTest-short.dat");
+  const text = await response.text();
+  
+  const lines = text.split(/\n/);
+  for(let i = 0; i < lines.length; i++){
+    let cols = lines[i].split(/\s+/);
+    if(cols.length >= 6){
+      let buf = [];
+      for(let j = 0; j < cols.length; j++){
+        buf.push(cols[j] - 0);
+      }
+      testdata.push(buf);
+    }
+  }
+})();
+
+function benchmarkFunction(funcname){
+  const f = window[funcname];
+  const dist = [];
+  const start = performance.now();
+  
+  for(const t of testdata){
+    f(t[0], t[1], t[3], t[4]);
+  }
+  const time = performance.now() - start;
+  
+  console.log(`${funcname}: ${time}`);
+  return time;
+}
+
+function measureError(funcname){
+  const f = window[funcname];
+  let error_abs = new Array(ERR_BIN_END - ERR_BIN_START + 1);
+  let error_rel = new Array(ERR_BIN_END - ERR_BIN_START + 1);
+  
+  for(const t of testdata){
+    const dist = f(t[0], t[1], t[3], t[4]);
+    
+    let err1 = Math.abs(dist - t[6]);
+    let err2 = err1 / t[6];
+    let idx = Math.floor(Math.log10(t[6])) - ERR_BIN_START;
+    
+    if(!error_abs[idx]) error_abs[idx] = -1;
+    if(!error_rel[idx]) error_rel[idx] = -1;
+    if(err1 > error_abs[idx]) error_abs[idx] = err1;
+    if(err2 > error_rel[idx]) error_rel[idx] = err2;
+  }
+  
+  console.log([error_abs, error_rel]);
+  return {
+    error_abs,
+    error_rel
+  }
+}
+
+function startBenchmark(){
+  const funcs = [
+    "havesine", 
+    "gsidistance", 
+    "hubeny", /*"hubeny1", "hubeny2", "hubeny3", */"hubeny4", 
+    "vincenty", 
+    "lambert", "andoyerlambert", "andoyerlambertthomas"
+  ];
+  const result = {};
+  
+  document.getElementById("result").innerHTML = "processing...";
+  
+  setTimeout(function(){
+    for(const f of funcs){
+      result[f] = {
+        times: [],
+        errors: {}
+      };
+    }
+    
+    for(let i = 0; i < 1; i++){
+      for(const f of funcs){
+        result[f].times.push(benchmarkFunction(f));
+      }
+    }
+    
+    for(const f of funcs){
+      result[f].errors = measureError(f);
+    }
+    
+    showResult(result);
+  }, 0);
+}
+
+function showResult(result){
+  const buf = []
+  
+  buf.push("<p>Calculation Time and Relative Error</p>");
+  buf.push("<table>");
+  buf.push("<table><tr><th>name</th><th>time</th>");
+  for(let i = ERR_BIN_START; i <= ERR_BIN_END; i++){
+    if(i <= 0){
+      buf.push(`<th>${Math.pow(10,i).toPrecision(1)}m</th>`);
+    }else{
+      buf.push(`<th>${Math.pow(10,i)}m</th>`);
+    }
+  }
+  buf.push("</tr>");
+  
+  for(const f in result){
+    buf.push("<tr><td>" + f + "</td>");
+    buf.push("<td>" + (result[f].times.reduce((i,a)=>i+a) / result[f].times.length).toFixed(1) + "</td>");
+    for(let i = 0; i <= ERR_BIN_END - ERR_BIN_START; i++){
+      if(result[f].errors.error_rel[i]){
+        buf.push("<td>" + result[f].errors.error_rel[i].toExponential(3) + "</td>");
+      }else{
+        buf.push("<td></td>");
+      }
+    }
+    buf.push("</tr>");
+  }
+  
+  buf.push("</table>");
+  
+  document.getElementById("result").innerHTML = buf.join("");
+}
+</script>
+<style>
+table {
+  border-collapse: collapse;
+}
+th, td {
+  padding: 2px;
+  border: 1px solid gray;
+}
+</style>
+<body>
+<h1>Geodesic Distance Calculation Formulae Benchmark in JavaScript</h1>
+<div>
+Formulae:
+<ul>
+<li>Haversine: <a href="https://en.wikipedia.org/wiki/Great-circle_distance">Great-circle distance - Wikipedia</a>
+<li>GSI: Based on Bowring's method, <a href="https://vldb.gsi.go.jp/sokuchi/surveycalc/surveycalc/algorithm/bl2st/bl2st.htm">距離と方位角の計算　計算式</a>
+<li>Hubeny:  Simplified version of hubeny's formula, <a href="https://www.koeki-prj.org/~yuuji/2017/gd2/06/distances.html">Calculating Distance between Two Points - #7 Game Design 2017</a>
+<li>Hubeny4: Full version of hubeny's formula, <a href="https://amano-tec.com/apps/paceruler.html">歩測計 Pace Ruler - ASTI アマノ技研</a>
+<li>Vincenty: <a href="https://en.wikipedia.org/wiki/Geographical_distance#Lambert's_formula_for_long_lines">Geographical distance - Wikipedia</a>
+<li>Lambert: <a href="https://dl.ndl.go.jp/info:ndljp/pid/11000306">回転楕円体上の測地線及び航程線の算出について - 国立国会図書館デジタルコレクション</a>
+<li>Andoyer-Lambert: <a href="https://web.archive.org/web/20160411010136/http://www2.nc-toyama.ac.jp/~mkawai/lecture/sailing/geodetic/geosail.html">Sample</a>
+<li>Andoyer-Lambert-Thomas: <a href="https://metacpan.org/pod/GIS::Distance::ALT">GIS::Distance::ALT - Andoyer-Lambert-Thomas distance calculations. - metacpan.org</a>
+</ul>
+</div>
+<div>
+<button onclick="startBenchmark()">Start Benchmark</button>
+<div id="result"></div>
+</div>
+</body>
+</html>
