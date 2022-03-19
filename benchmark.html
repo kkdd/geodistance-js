@@ -34,6 +34,8 @@ const ERR_BIN_END   =  7;
       testdata.push(buf);
     }
   }
+  
+  document.getElementById("btn_benchmark").disabled = false;
 })();
 
 function benchmarkFunction(funcname){
@@ -167,7 +169,7 @@ Formulae:
 </ul>
 </div>
 <div>
-<button onclick="startBenchmark()">Start Benchmark</button>
+<button id="btn_benchmark" onclick="startBenchmark()" disabled>Start Benchmark</button>
 <div id="result"></div>
 </div>
 </body>
