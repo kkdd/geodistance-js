@@ -14,12 +14,12 @@
 <script>
 "use strict";
 let testdata = [];
-const ERR_BIN_START = -4;
+const ERR_BIN_START =  0; // -4 for GeodTest.dat
 const ERR_BIN_END   =  7;
 
 
 (async function(){
-//  const response = await fetch("./GeodTest.dat");
+//  const response = await fetch("./GeodTest.dat"); // GitHub limit over
   const response = await fetch("./GeodTest-short.dat");
   const text = await response.text();
   
