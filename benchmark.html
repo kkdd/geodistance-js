@@ -18,6 +18,7 @@ const TIME_N = 3; // number of times for measure calculation time
 const ERR_BIN_START =  0; // -4 for GeodTest.dat
 const ERR_BIN_END   =  7;
 const testdata = [];
+let flag_graph_complete = false;
 
 // Load GeodTest(-short).dat
 (async function(){
@@ -90,49 +91,40 @@ async function startBenchmark(){
   ];
   const result = {};
   
+  document.getElementById("btn_benchmark").disabled = true;
   document.getElementById("message").innerHTML = "executing benchmarks...";
   
-  (new Promise((resolve, reject) => {
-    setTimeout(() => {
+  setTimeout(() => {
+    for(const f of funcs){
+      result[f] = {
+        times: [],
+        dist: null,
+        errors: {}
+      };
+    }
+    
+    for(let i = 0; i < TIME_N; i++){
       for(const f of funcs){
-        result[f] = {
-          times: [],
-          dist: null,
-          errors: {}
-        };
+        const r = benchmarkFunction(f);
+        result[f].times.push(r.time);
+        result[f].dist = r.dist;
       }
-      
-      for(let i = 0; i < TIME_N; i++){
-        for(const f of funcs){
-          const r = benchmarkFunction(f);
-          result[f].times.push(r.time);
-          result[f].dist = r.dist;
-        }
-      }
-      
-      for(const f of funcs){
-        result[f].errors = analyseError(result[f].dist);
-      }
-      
-      showResultTable(result);
-      resolve();
-    }, 0);
-  })).then(new Promise((resolve, reject) => {
-    setTimeout(() => {
-      document.getElementById("message").innerHTML = "drawing graphs...";
-      resolve();
-    }, 0);
-  })).then(new Promise((resolve, reject) => {
+    }
+    
+    for(const f of funcs){
+      result[f].errors = analyseError(result[f].dist);
+    }
+    
+    showResultTable(result);
+
+    document.getElementById("message").innerHTML = "drawing graphs...";
+    
     setTimeout(() => {
       showResultGraph(result);
-      resolve();
-    }, 0);
-  })).then(new Promise((resolve, reject) => {
-    setTimeout(() => {
       document.getElementById("message").innerHTML = "";
-      resolve();
+      document.getElementById("btn_benchmark").disabled = false;
     }, 0);
-  }));
+  }, 0);
 }
 
 function showResultTable(result){
@@ -172,6 +164,11 @@ function showResultGraph(result){
   const labels = [];
   const datasets = [];
   const colors = ["#3f3d99", "#993d70", "#998b3d", "#3d9955", "#3d5a99", "#993d8f", "#996c3d", "#43993d", "#3d7899", "#833d99"];
+  
+  if(flag_graph_complete){
+    return;
+  }
+  
   for(let i = ERR_BIN_START; i <= ERR_BIN_END; i++){
     if(i <= 0){
       labels.push(Math.pow(10,i));
@@ -241,6 +238,8 @@ function showResultGraph(result){
       }
     }
   });
+  
+  flag_graph_complete = true;
 }
 </script>
 <style>
