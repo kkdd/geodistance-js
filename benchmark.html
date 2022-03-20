@@ -80,7 +80,7 @@ function analyseError(dist){
   }
 }
 
-function startBenchmark(){
+async function startBenchmark(){
   const funcs = [
     "haversine", 
     "gsidistance", 
@@ -90,35 +90,49 @@ function startBenchmark(){
   ];
   const result = {};
   
-  document.getElementById("result").innerHTML = "processing...";
+  document.getElementById("message").innerHTML = "executing benchmarks...";
   
-  setTimeout(function(){
-    for(const f of funcs){
-      result[f] = {
-        times: [],
-        dist: null,
-        errors: {}
-      };
-    }
-    
-    for(let i = 0; i < TIME_N; i++){
+  (new Promise((resolve, reject) => {
+    setTimeout(() => {
       for(const f of funcs){
-        const r = benchmarkFunction(f);
-        result[f].times.push(r.time);
-        result[f].dist = r.dist;
+        result[f] = {
+          times: [],
+          dist: null,
+          errors: {}
+        };
       }
-    }
-    
-    for(const f of funcs){
-      result[f].errors = analyseError(result[f].dist);
-    }
-    
-    showResultTable(result);
-    document.getElementById("chart_message").innerHTML = "drawing...";
-    setTimeout(function(){
-      showResultGraph(result);
+      
+      for(let i = 0; i < TIME_N; i++){
+        for(const f of funcs){
+          const r = benchmarkFunction(f);
+          result[f].times.push(r.time);
+          result[f].dist = r.dist;
+        }
+      }
+      
+      for(const f of funcs){
+        result[f].errors = analyseError(result[f].dist);
+      }
+      
+      showResultTable(result);
+      resolve();
     }, 0);
-  }, 0);
+  })).then(new Promise((resolve, reject) => {
+    setTimeout(() => {
+      document.getElementById("message").innerHTML = "drawing graphs...";
+      resolve();
+    }, 0);
+  })).then(new Promise((resolve, reject) => {
+    setTimeout(() => {
+      showResultGraph(result);
+      resolve();
+    }, 0);
+  })).then(new Promise((resolve, reject) => {
+    setTimeout(() => {
+      document.getElementById("message").innerHTML = "";
+      resolve();
+    }, 0);
+  }));
 }
 
 function showResultTable(result){
@@ -227,8 +241,6 @@ function showResultGraph(result){
       }
     }
   });
-  
-  document.getElementById("chart_message").innerHTML = "";
 }
 </script>
 <style>
@@ -268,9 +280,9 @@ Formulae compared:
 </ul>
 </div>
 <div>
-<button id="btn_benchmark" onclick="startBenchmark()" disabled>Start Benchmark</button>
+<button id="btn_benchmark" onclick="startBenchmark()" disabled>Start Benchmark</button> <span id="message"></span>
 <div id="result"></div>
-<div><span id="chart_message"></span><canvas id="chart"></canvas></div>
+<div><canvas id="chart"></canvas></div>
 </div>
 </body>
 </html>
