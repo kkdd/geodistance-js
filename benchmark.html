@@ -14,10 +14,11 @@
 <script>
 "use strict";
 let testdata = [];
+const TIME_N = 3; // number of times for measure calculation time
 const ERR_BIN_START =  0; // -4 for GeodTest.dat
 const ERR_BIN_END   =  7;
 
-
+// Load GeodTest(-short).dat
 (async function(){
 //  const response = await fetch("./GeodTest.dat"); // GitHub limit over
   const response = await fetch("./GeodTest-short.dat");
@@ -38,6 +39,7 @@ const ERR_BIN_END   =  7;
   document.getElementById("btn_benchmark").disabled = false;
 })();
 
+// measure calculation time
 function benchmarkFunction(funcname){
   const f = window[funcname];
   const dist = [];
@@ -52,6 +54,7 @@ function benchmarkFunction(funcname){
   return time;
 }
 
+// analyse error distribution
 function measureError(funcname){
   const f = window[funcname];
   let error_abs = new Array(ERR_BIN_END - ERR_BIN_START + 1);
@@ -97,7 +100,7 @@ function startBenchmark(){
       };
     }
     
-    for(let i = 0; i < 1; i++){
+    for(let i = 0; i < TIME_N; i++){
       for(const f of funcs){
         result[f].times.push(benchmarkFunction(f));
       }
@@ -114,9 +117,9 @@ function startBenchmark(){
 function showResult(result){
   const buf = []
   
-  buf.push("<p>Calculation Time and Relative Error</p>");
+  buf.push(`<p>Calculation Time (N=${TIME_N}) and Relative Error</p>`);
   buf.push("<table>");
-  buf.push("<table><tr><th>name</th><th>time</th>");
+  buf.push("<table><tr><th>name</th><th>average time [ms]</th>");
   for(let i = ERR_BIN_START; i <= ERR_BIN_END; i++){
     if(i <= 0){
       buf.push(`<th>${Math.pow(10,i).toPrecision(1)}m-</th>`);
@@ -127,8 +130,8 @@ function showResult(result){
   buf.push("</tr>");
   
   for(const f in result){
-    buf.push("<tr><td>" + f + "</td>");
-    buf.push("<td>" + (result[f].times.reduce((i,a)=>i+a) / result[f].times.length).toFixed(1) + "</td>");
+    buf.push("<tr><td class='center'>" + f + "</td>");
+    buf.push("<td class='right'>" + (result[f].times.reduce((i,a)=>i+a) / result[f].times.length).toFixed(1) + "</td>");
     for(let i = 0; i <= ERR_BIN_END - ERR_BIN_START; i++){
       if(result[f].errors.error_rel[i]){
         buf.push("<td>" + result[f].errors.error_rel[i].toExponential(3) + "</td>");
@@ -152,6 +155,15 @@ th, td {
   padding: 2px;
   border: 1px solid gray;
 }
+.left{
+  text-align: left;
+}
+.center{
+  text-align: center;
+}
+.right{
+  text-align: right;
+}
 </style>
 <body>
 <h1>Geodesic Distance Calculation Formulae Benchmark in JavaScript</h1>
@@ -159,7 +171,7 @@ th, td {
 Formulae:
 <ul>
 <li>Haversine: <a href="https://en.wikipedia.org/wiki/Great-circle_distance">Great-circle distance - Wikipedia</a>
-<li>GSI: Based on Bowring's method, <a href="https://vldb.gsi.go.jp/sokuchi/surveycalc/surveycalc/algorithm/bl2st/bl2st.htm">距離と方位角の計算　計算式</a>
+<li>GSI: Used by GSI(Geospatial Information Authority of Japan) distance calculation service, based on Bowring's method, <a href="https://vldb.gsi.go.jp/sokuchi/surveycalc/surveycalc/algorithm/bl2st/bl2st.htm">距離と方位角の計算　計算式</a>
 <li>Hubeny:  Simplified version of hubeny's formula, <a href="https://www.koeki-prj.org/~yuuji/2017/gd2/06/distances.html">Calculating Distance between Two Points - #7 Game Design 2017</a>
 <li>Hubeny4: Full version of hubeny's formula, <a href="https://amano-tec.com/apps/paceruler.html">歩測計 Pace Ruler - ASTI アマノ技研</a>
 <li>Vincenty: <a href="https://en.wikipedia.org/wiki/Geographical_distance#Lambert's_formula_for_long_lines">Geographical distance - Wikipedia</a>
