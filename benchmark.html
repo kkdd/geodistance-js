@@ -39,6 +39,7 @@ let flag_graph_complete = false;
   }
   
   document.getElementById("btn_benchmark").disabled = false;
+  document.getElementById("message").innerHTML = "";
 })();
 
 // measure time and distance calculation
@@ -81,7 +82,7 @@ function analyseError(dist){
   }
 }
 
-async function startBenchmark(){
+function startBenchmark(){
   const funcs = [
     "haversine", 
     "gsidistance", 
@@ -279,7 +280,7 @@ Formulae compared:
 </ul>
 </div>
 <div>
-<button id="btn_benchmark" onclick="startBenchmark()" disabled>Start Benchmark</button> <span id="message"></span>
+<button id="btn_benchmark" onclick="startBenchmark()" disabled>Start Benchmark</button> <span id="message">loading...</span>
 <div id="result"></div>
 <div><canvas id="chart"></canvas></div>
 </div>
