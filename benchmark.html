@@ -12,13 +12,13 @@
 <script src="andoyerlambert.js"></script>
 <script src="andoyerlambertthomas.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="gunzip.min.js"></script>
 <script>
 "use strict";
-const TIME_N = 3; // number of times for measure calculation time
+const TIME_N = 5; // number of times for measure calculation time
 const ERR_BIN_START =  0; // -4 for GeodTest.dat
 const ERR_BIN_END   =  7;
 const testdata = [];
+const result = {};
 let flag_graph_complete = false;
 
 // Load GeodTest(-short).dat
@@ -91,14 +91,13 @@ function startBenchmark(){
     "vincenty", 
     "lambert", "andoyerlambert", "andoyerlambertthomas"
   ];
-  const result = {};
   
   document.getElementById("btn_benchmark").disabled = true;
   document.getElementById("message").innerHTML = "executing benchmarks...";
   
   setTimeout(() => {
     for(const f of funcs){
-      result[f] = {
+      result[f] = result[f] || {
         times: [],
         dist: null,
         errors: {}
@@ -131,8 +130,8 @@ function startBenchmark(){
 
 function showResultTable(result){
   const buf = []
+  let N = null;
   
-  buf.push(`<p>Calculation Time (N=${TIME_N}) and Relative Error</p>`);
   buf.push("<table>");
   buf.push("<table><tr><th>name</th><th>average time [ms]</th>");
   for(let i = ERR_BIN_START; i <= ERR_BIN_END; i++){
@@ -155,9 +154,12 @@ function showResultTable(result){
       }
     }
     buf.push("</tr>");
+    
+    N = N || result[f].times.length;
   }
   
   buf.push("</table>");
+  buf.unshift(`<p>Calculation Time (N=${N}) and Relative Error</p>`);
   
   document.getElementById("result").innerHTML = buf.join("");
 }
