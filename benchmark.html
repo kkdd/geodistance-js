@@ -11,12 +11,13 @@
 <script src="lambert.js"></script>
 <script src="andoyerlambert.js"></script>
 <script src="andoyerlambertthomas.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 "use strict";
-let testdata = [];
 const TIME_N = 3; // number of times for measure calculation time
 const ERR_BIN_START =  0; // -4 for GeodTest.dat
 const ERR_BIN_END   =  7;
+const testdata = [];
 
 // Load GeodTest(-short).dat
 (async function(){
@@ -39,33 +40,33 @@ const ERR_BIN_END   =  7;
   document.getElementById("btn_benchmark").disabled = false;
 })();
 
-// measure calculation time
+// measure time and distance calculation
 function benchmarkFunction(funcname){
   const f = window[funcname];
   const dist = [];
   const start = performance.now();
   
   for(const t of testdata){
-    f(t[0], t[1], t[3], t[4]);
+    dist.push(f(t[0], t[1], t[3], t[4]));
   }
   const time = performance.now() - start;
   
   console.log(`${funcname}: ${time}`);
-  return time;
+  return {
+    dist: dist,
+    time: time
+  };
 }
 
 // analyse error distribution
-function measureError(funcname){
-  const f = window[funcname];
+function analyseError(dist){
   let error_abs = new Array(ERR_BIN_END - ERR_BIN_START + 1);
   let error_rel = new Array(ERR_BIN_END - ERR_BIN_START + 1);
   
-  for(const t of testdata){
-    const dist = f(t[0], t[1], t[3], t[4]);
-    
-    let err1 = Math.abs(dist - t[6]);
-    let err2 = err1 / t[6];
-    let idx = Math.floor(Math.log10(t[6])) - ERR_BIN_START;
+  for(let i = 0; i < testdata.length; i++){
+    let err1 = Math.abs(dist[i] - testdata[i][6]);
+    let err2 = err1 / testdata[i][6];
+    let idx = Math.floor(Math.log10(testdata[i][6])) - ERR_BIN_START;
     
     if(!error_abs[idx]) error_abs[idx] = -1;
     if(!error_rel[idx]) error_rel[idx] = -1;
@@ -73,7 +74,6 @@ function measureError(funcname){
     if(err2 > error_rel[idx]) error_rel[idx] = err2;
   }
   
-  console.log([error_abs, error_rel]);
   return {
     error_abs,
     error_rel
@@ -96,25 +96,29 @@ function startBenchmark(){
     for(const f of funcs){
       result[f] = {
         times: [],
+        dist: null,
         errors: {}
       };
     }
     
     for(let i = 0; i < TIME_N; i++){
       for(const f of funcs){
-        result[f].times.push(benchmarkFunction(f));
+        const r = benchmarkFunction(f);
+        result[f].times.push(r.time);
+        result[f].dist = r.dist;
       }
     }
     
     for(const f of funcs){
-      result[f].errors = measureError(f);
+      result[f].errors = analyseError(result[f].dist);
     }
     
-    showResult(result);
+    showResultTable(result);
+    showResultGraph(result);
   }, 0);
 }
 
-function showResult(result){
+function showResultTable(result){
   const buf = []
   
   buf.push(`<p>Calculation Time (N=${TIME_N}) and Relative Error</p>`);
@@ -145,6 +149,65 @@ function showResult(result){
   buf.push("</table>");
   
   document.getElementById("result").innerHTML = buf.join("");
+}
+
+function showResultGraph(result){
+  const labels = [];
+  const datasets = [];
+  const colors = ["#3f3d99", "#993d70", "#998b3d", "#3d9955", "#3d5a99", "#993d8f", "#996c3d", "#43993d", "#3d7899", "#833d99"];
+  for(let i = ERR_BIN_START; i <= ERR_BIN_END; i++){
+    if(i <= 0){
+      labels.push(Math.pow(10,i));
+    }else{
+      labels.push(Math.pow(10,i));
+    }
+  }
+  let j = 0;
+  for(const f in result){
+    const dataset = {};
+    
+    dataset.label = f;
+    dataset.backgroundColor = colors[j++ % colors.length];
+    dataset.borderColor = dataset.backgroundColor;
+    dataset.data = [];
+    for(let i = 0; i <= ERR_BIN_END - ERR_BIN_START; i++){
+      if(result[f].errors.error_rel[i]){
+        dataset.data.push(result[f].errors.error_rel[i]);
+      }
+    }
+    
+    datasets.push(dataset);
+  }
+  console.log(labels);
+  console.log(datasets);
+  
+  const chart = new Chart(document.getElementById("chart"), {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: datasets
+    },
+    options: {
+      scales: {
+        x: {
+          display: true,
+          type: "logarithmic",
+          title: {
+            display: true,
+            text: "True Distance [m]"
+          }
+        },
+        y: {
+          display: true,
+          type: "logarithmic",
+          title: {
+            display: true,
+            text: "Relative Error"
+          }
+        }
+      }
+    }
+  });
 }
 </script>
 <style>
@@ -183,6 +246,7 @@ Formulae:
 <div>
 <button id="btn_benchmark" onclick="startBenchmark()" disabled>Start Benchmark</button>
 <div id="result"></div>
+<div><canvas id="chart"></canvas></div>
 </div>
 </body>
 </html>
