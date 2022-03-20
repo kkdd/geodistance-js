@@ -114,7 +114,10 @@ function startBenchmark(){
     }
     
     showResultTable(result);
-    showResultGraph(result);
+    document.getElementById("chart_message").innerHTML = "drawing...";
+    setTimeout(function(){
+      showResultGraph(result);
+    }, 0);
   }, 0);
 }
 
@@ -163,6 +166,7 @@ function showResultGraph(result){
     }
   }
   let j = 0;
+  
   for(const f in result){
     const dataset = {};
     
@@ -170,24 +174,28 @@ function showResultGraph(result){
     dataset.backgroundColor = colors[j++ % colors.length];
     dataset.borderColor = dataset.backgroundColor;
     dataset.data = [];
-    for(let i = 0; i <= ERR_BIN_END - ERR_BIN_START; i++){
-      if(result[f].errors.error_rel[i]){
-        dataset.data.push(result[f].errors.error_rel[i]);
-      }
+    for(let i = 0; i < testdata.length; i++){
+      dataset.data.push([
+        testdata[i][6],
+        (result[f].dist[i] / testdata[i][6]) - 1
+      ]);
     }
     
     datasets.push(dataset);
   }
-  console.log(labels);
-  console.log(datasets);
   
   const chart = new Chart(document.getElementById("chart"), {
-    type: "line",
+    type: "scatter",
     data: {
       labels: labels,
       datasets: datasets
     },
     options: {
+      plugins: {
+        tooltip: {
+          enabled: false
+        }
+      },
       scales: {
         x: {
           display: true,
@@ -203,11 +211,24 @@ function showResultGraph(result){
           title: {
             display: true,
             text: "Relative Error"
+          },
+          min: 1e-16,
+          max: 1e1,
+          ticks: {
+            callback: (val, index) => {
+              if(val.toExponential(1).startsWith("1")){
+                return val.toExponential(1);
+              }else{
+                return "";
+              }
+            }
           }
         }
       }
     }
   });
+  
+  document.getElementById("chart_message").innerHTML = "";
 }
 </script>
 <style>
@@ -246,7 +267,7 @@ Formulae:
 <div>
 <button id="btn_benchmark" onclick="startBenchmark()" disabled>Start Benchmark</button>
 <div id="result"></div>
-<div><canvas id="chart"></canvas></div>
+<div><span id="chart_message"></span><canvas id="chart"></canvas></div>
 </div>
 </body>
 </html>
