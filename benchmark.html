@@ -178,7 +178,8 @@ function showResultTable(result){
 function showResultGraph(result){
   const labels = [];
   const datasets = [];
-  const colors = ["#3f3d99", "#993d70", "#998b3d", "#3d9955", "#3d5a99", "#993d8f", "#996c3d", "#43993d", "#3d7899", "#833d99"];
+  const colors = ["#3f3d99", "#993d70", "#998b3d", "#3d9955", "#3d5a99", "#993d8f", "#996c3d", "#43993d", "#3d7899", "#833d99", "#994e3d", "#61993d"];
+  const shapes = ["rect", "triangle", "rectRot"];
   
   if(flag_graph_complete){
     return;
@@ -197,7 +198,8 @@ function showResultGraph(result){
     const dataset = {};
     
     dataset.label = f;
-    dataset.backgroundColor = colors[j++ % colors.length];
+    dataset.backgroundColor = colors[j % colors.length];
+    dataset.pointStyle = shapes[Math.floor(j / 4) % shapes.length];
     dataset.borderColor = dataset.backgroundColor;
     dataset.data = [];
     for(let i = 0; i < testdata.length; i++){
@@ -207,6 +209,7 @@ function showResultGraph(result){
       ]);
     }
     
+    j++;
     datasets.push(dataset);
   }
   
@@ -220,6 +223,11 @@ function showResultGraph(result){
       plugins: {
         tooltip: {
           enabled: false
+        },
+        legend: {
+          labels: {
+            usePointStyle: true
+          }
         }
       },
       scales: {
