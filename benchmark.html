@@ -11,6 +11,7 @@
 <script src="lambert.js"></script>
 <script src="andoyerlambert.js"></script>
 <script src="andoyerlambertthomas.js"></script>
+<script src="https://geographiclib.sourceforge.io/scripts/geographiclib.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 "use strict";
@@ -20,6 +21,15 @@ const ERR_BIN_END   =  7;
 const testdata = [];
 const result = {};
 let flag_graph_complete = false;
+
+// wrapper for geographiclib.js
+window.geographiclib = (function(){
+  const geod = GeographicLib.Geodesic.WGS84;
+  
+  return function(lat1, lon1, lat2, lon2){
+    return geod.Inverse(lat1, lon1, lat2, lon2).s12;
+  };
+})();
 
 // Load GeodTest(-short).dat
 (async function(){
@@ -85,6 +95,7 @@ function analyseError(dist){
 
 function startBenchmark(){
   const funcs = [
+    "geographiclib",
     "haversine", 
     "gsidistance", 
     "hubeny", /*"hubeny1", "hubeny2", "hubeny3", */"hubeny4", 
@@ -270,8 +281,9 @@ th, td {
 Compare calculation speed and precision for geodesic ellipsoid distance calculation functions implemented in JavaScript.
 </p>
 <div>
-Formulae compared:
+Compared Formulae:
 <ul>
+<li>GeographicLib: the most accurate calculation library. <a href="https://geographiclib.sourceforge.io/">GeographicLib</a>
 <li>Haversine: <a href="https://en.wikipedia.org/wiki/Great-circle_distance">Great-circle distance - Wikipedia</a>
 <li>GSI: Used by GSI(Geospatial Information Authority of Japan) distance calculation service, based on Bowring's method, <a href="https://vldb.gsi.go.jp/sokuchi/surveycalc/surveycalc/algorithm/bl2st/bl2st.htm">距離と方位角の計算　計算式</a>
 <li>Hubeny:  Simplified version of hubeny's formula, <a href="https://www.koeki-prj.org/~yuuji/2017/gd2/06/distances.html">Calculating Distance between Two Points - #7 Game Design 2017</a>
