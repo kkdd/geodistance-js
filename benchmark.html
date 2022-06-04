@@ -1,74 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
 <title>Geodesic Distance Formulae Benchmark</title>
+<meta charset="utf-8"/>
 </head>
-<script src="haversine.js"></script>
-<script src="hubeny_simple.js"></script>
-<script src="hubeny_series.js"></script>
-<script src="gsidistance.js"></script>
-<script src="vincenty.js"></script>
-<script src="lambert.js"></script>
-<script src="andoyerlambert.js"></script>
-<script src="andoyerlambertthomas.js"></script>
-<script src="https://geographiclib.sourceforge.io/scripts/geographiclib.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 "use strict";
 const TIME_N = 5; // number of times for benchmark repeat
-const ERR_BIN_START =  0; // -4 for GeodTest.dat, 0 for GeodTest-short.dat
-const ERR_BIN_END   =  7;
-const testdata = [];
+let ERR_BIN_START =  0;
+let ERR_BIN_END   =  0;
+const worker = new Worker("benchmark_worker.js");
 const result = {};
+let testdata = [];
 let flag_graph_complete = false;
 
-// wrapper for geographiclib.js
-window.geographiclib = (function(){
-  const geod = GeographicLib.Geodesic.WGS84;
-  
-  return function(lat1, lon1, lat2, lon2){
-    return geod.Inverse(lat1, lon1, lat2, lon2).s12;
+{
+  worker.onmessage = function(e){
+    document.getElementById("btn_benchmark").disabled = false;
+    document.getElementById("message").innerHTML = "";
+    ERR_BIN_START = Math.floor(Math.log10(e.data.distance_min));
+    ERR_BIN_END = Math.floor(Math.log10(e.data.distance_max));
+    testdata = e.data.testdata;
   };
-})();
-
-// Load GeodTest(-short).dat
-(async function(){
-//  const response = await fetch("./GeodTest.dat"); // GitHub limit over
-  const response = await fetch("./GeodTest-short.dat");
-  const text = await response.text();
-  
-  const lines = text.split(/\n/);
-  for(let i = 0; i < lines.length; i++){
-    let cols = lines[i].split(/\s+/);
-    if(cols.length >= 6){
-      let buf = [];
-      for(let j = 0; j < cols.length; j++){
-        buf.push(cols[j] - 0);
-      }
-      testdata.push(buf);
-    }
-  }
-  
-  document.getElementById("btn_benchmark").disabled = false;
-  document.getElementById("message").innerHTML = "";
-})();
-
-// measure time and distance calculation
-function benchmarkFunction(funcname){
-  const f = window[funcname];
-  const dist = [];
-  const start = performance.now();
-  
-  for(const t of testdata){
-    dist.push(f(t[0], t[1], t[3], t[4]));
-  }
-  const time = performance.now() - start;
-  
-  console.log(`${funcname}: ${time}`);
-  return {
-    dist: dist,
-    time: time
-  };
+  worker.postMessage({func: "loadTestData", args: []});
 }
 
 // analyse error distribution
@@ -93,7 +48,19 @@ function analyseError(dist){
   }
 }
 
-function startBenchmark(){
+function benchmarkFunction(func_name){
+  return new Promise((resolve, reject) => {
+    worker.onmessage = function(e){
+      resolve(e.data);
+    };
+    worker.postMessage({
+      func: "benchmarkFunction",
+      args: [func_name]
+    });
+  });
+}
+
+async function startBenchmark(){
   const funcs = [
     "geographiclib",
     "haversine", 
@@ -106,36 +73,34 @@ function startBenchmark(){
   document.getElementById("btn_benchmark").disabled = true;
   document.getElementById("message").innerHTML = "executing benchmarks...";
   
-  setTimeout(() => {
+  for(const f of funcs){
+    result[f] = result[f] || {
+      times: [],
+      dist: null,
+      errors: {}
+    };
+  }
+  
+  for(let i = 0; i < TIME_N; i++){
     for(const f of funcs){
-      result[f] = result[f] || {
-        times: [],
-        dist: null,
-        errors: {}
-      };
+      const r = await benchmarkFunction(f);
+      result[f].times.push(r.time);
+      result[f].dist = r.dist;
     }
-    
-    for(let i = 0; i < TIME_N; i++){
-      for(const f of funcs){
-        const r = benchmarkFunction(f);
-        result[f].times.push(r.time);
-        result[f].dist = r.dist;
-      }
-    }
-    
-    for(const f of funcs){
-      result[f].errors = analyseError(result[f].dist);
-    }
-    
-    showResultTable(result);
+  }
+  
+  for(const f of funcs){
+    result[f].errors = analyseError(result[f].dist);
+  }
+  
+  showResultTable(result);
 
-    document.getElementById("message").innerHTML = "drawing graphs...";
-    
-    setTimeout(() => {
-      showResultGraph(result);
-      document.getElementById("message").innerHTML = "";
-      document.getElementById("btn_benchmark").disabled = false;
-    }, 0);
+  document.getElementById("message").innerHTML = "drawing graphs...";
+  
+  setTimeout(() => {
+    showResultGraph(result);
+    document.getElementById("message").innerHTML = "";
+    document.getElementById("btn_benchmark").disabled = false;
   }, 0);
 }
 
