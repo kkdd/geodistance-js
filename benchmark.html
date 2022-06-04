@@ -10,101 +10,42 @@
 const TIME_N = 5; // number of times for benchmark repeat
 let ERR_BIN_START =  0;
 let ERR_BIN_END   =  0;
-const worker = new Worker("benchmark_worker.js");
-const result = {};
+let result = {};
 let testdata = [];
 let flag_graph_complete = false;
 
-{
-  worker.onmessage = function(e){
-    document.getElementById("btn_benchmark").disabled = false;
-    document.getElementById("message").innerHTML = "";
-    ERR_BIN_START = Math.floor(Math.log10(e.data.distance_min));
-    ERR_BIN_END = Math.floor(Math.log10(e.data.distance_max));
-    testdata = e.data.testdata;
-  };
-  worker.postMessage({func: "loadTestData", args: []});
-}
+const worker = new Worker("benchmark_worker.js");
 
-// analyse error distribution
-function analyseError(dist){
-  let error_abs = new Array(ERR_BIN_END - ERR_BIN_START + 1);
-  let error_rel = new Array(ERR_BIN_END - ERR_BIN_START + 1);
-  
-  for(let i = 0; i < testdata.length; i++){
-    let err1 = Math.abs(dist[i] - testdata[i][6]);
-    let err2 = err1 / testdata[i][6];
-    let idx = Math.floor(Math.log10(testdata[i][6])) - ERR_BIN_START;
-    
-    if(!error_abs[idx]) error_abs[idx] = -1;
-    if(!error_rel[idx]) error_rel[idx] = -1;
-    if(err1 > error_abs[idx]) error_abs[idx] = err1;
-    if(err2 > error_rel[idx]) error_rel[idx] = err2;
-  }
-  
-  return {
-    error_abs,
-    error_rel
-  }
-}
+worker.onmessage = function(e){
+  document.getElementById("btn_benchmark").disabled = false;
+  document.getElementById("message").innerHTML = "";
+  ERR_BIN_START = Math.floor(Math.log10(e.data.distance_min));
+  ERR_BIN_END = Math.floor(Math.log10(e.data.distance_max));
+  testdata = e.data.testdata;
+};
+worker.postMessage({func: "loadTestData", args: []});
 
-function benchmarkFunction(func_name){
-  return new Promise((resolve, reject) => {
+async function startBenchmark(){
+  document.getElementById("btn_benchmark").disabled = true;
+  document.getElementById("message").innerHTML = "executing benchmarks...";
+  
+  result = await new Promise((resolve, reject) => {
     worker.onmessage = function(e){
       resolve(e.data);
     };
     worker.postMessage({
-      func: "benchmarkFunction",
-      args: [func_name]
+      func: "startBenchmark",
+      args: [TIME_N, result, ERR_BIN_START, ERR_BIN_END]
     });
   });
-}
-
-async function startBenchmark(){
-  const funcs = [
-    "geographiclib",
-    "haversine", 
-    "gsidistance", 
-    "hubeny", /*"hubeny1", "hubeny2", "hubeny3", */"hubeny4", 
-    "vincenty", 
-    "lambert", "andoyerlambert", "andoyerlambertthomas"
-  ];
-  
-  document.getElementById("btn_benchmark").disabled = true;
-  document.getElementById("message").innerHTML = "executing benchmarks...";
-  
-  for(const f of funcs){
-    result[f] = result[f] || {
-      times: [],
-      dist: null,
-      errors: {}
-    };
-  }
-  
-  for(let i = 0; i < TIME_N; i++){
-    for(const f of funcs){
-      const r = await benchmarkFunction(f);
-      result[f].times.push(r.time);
-      result[f].dist = r.dist;
-    }
-  }
-  
-  for(const f of funcs){
-    result[f].errors = analyseError(result[f].dist);
-  }
   
   showResultTable(result);
-
-  document.getElementById("message").innerHTML = "drawing graphs...";
-  
-  setTimeout(() => {
-    showResultGraph(result);
-    document.getElementById("message").innerHTML = "";
-    document.getElementById("btn_benchmark").disabled = false;
-  }, 0);
+  document.getElementById("btn_benchmark").disabled = false;
+  document.getElementById("btn_drawgraph").disabled = false;
+  document.getElementById("message").innerHTML = "";
 }
 
-function showResultTable(result){
+function showResultTable(){
   const buf = []
   let N = null;
   
@@ -140,7 +81,7 @@ function showResultTable(result){
   document.getElementById("result").innerHTML = buf.join("");
 }
 
-function showResultGraph(result){
+async function showResultGraph(){
   const labels = [];
   const datasets = [];
   const colors = ["#3f3d99", "#993d70", "#998b3d", "#3d9955", "#3d5a99", "#993d8f", "#996c3d", "#43993d", "#3d7899", "#833d99", "#994e3d", "#61993d"];
@@ -149,85 +90,89 @@ function showResultGraph(result){
   if(flag_graph_complete){
     return;
   }
+  document.getElementById("message").innerHTML = "drawing graph...";
   
-  for(let i = ERR_BIN_START; i <= ERR_BIN_END; i++){
-    if(i <= 0){
-      labels.push(Math.pow(10,i));
-    }else{
-      labels.push(Math.pow(10,i));
+  setTimeout(() => {
+    for(let i = ERR_BIN_START; i <= ERR_BIN_END; i++){
+      if(i <= 0){
+        labels.push(Math.pow(10,i));
+      }else{
+        labels.push(Math.pow(10,i));
+      }
     }
-  }
-  let j = 0;
-  
-  for(const f in result){
-    const dataset = {};
+    let j = 0;
     
-    dataset.label = f;
-    dataset.backgroundColor = colors[j % colors.length];
-    dataset.pointStyle = shapes[Math.floor(j / 4) % shapes.length];
-    dataset.borderColor = dataset.backgroundColor;
-    dataset.data = [];
-    for(let i = 0; i < testdata.length; i++){
-      dataset.data.push([
-        testdata[i][6],
-        (result[f].dist[i] / testdata[i][6]) - 1
-      ]);
+    for(const f in result){
+      const dataset = {};
+      
+      dataset.label = f;
+      dataset.backgroundColor = colors[j % colors.length];
+      dataset.pointStyle = shapes[Math.floor(j / 4) % shapes.length];
+      dataset.borderColor = dataset.backgroundColor;
+      dataset.data = [];
+      for(let i = 0; i < testdata.length; i += 1){
+        dataset.data.push([
+          testdata[i][6],
+          (result[f].dist[i] / testdata[i][6]) - 1
+        ]);
+      }
+      
+      j++;
+      datasets.push(dataset);
     }
     
-    j++;
-    datasets.push(dataset);
-  }
-  
-  const chart = new Chart(document.getElementById("chart"), {
-    type: "scatter",
-    data: {
-      labels: labels,
-      datasets: datasets
-    },
-    options: {
-      plugins: {
-        tooltip: {
-          enabled: false
-        },
-        legend: {
-          labels: {
-            usePointStyle: true
-          }
-        }
+    const chart = new Chart(document.getElementById("chart"), {
+      type: "scatter",
+      data: {
+        labels: labels,
+        datasets: datasets
       },
-      scales: {
-        x: {
-          display: true,
-          type: "logarithmic",
-          title: {
-            display: true,
-            text: "True Distance [m]"
+      options: {
+        plugins: {
+          tooltip: {
+            enabled: false
+          },
+          legend: {
+            labels: {
+              usePointStyle: true
+            }
           }
         },
-        y: {
-          display: true,
-          type: "logarithmic",
-          title: {
+        scales: {
+          x: {
             display: true,
-            text: "Relative Error"
+            type: "logarithmic",
+            title: {
+              display: true,
+              text: "True Distance [m]"
+            }
           },
-          min: 1e-16,
-          max: 1e1,
-          ticks: {
-            callback: (val, index) => {
-              if(val.toExponential(1).startsWith("1")){
-                return val.toExponential(1);
-              }else{
-                return "";
+          y: {
+            display: true,
+            type: "logarithmic",
+            title: {
+              display: true,
+              text: "Relative Error"
+            },
+            min: 1e-16,
+            max: 1e1,
+            ticks: {
+              callback: (val, index) => {
+                if(val.toExponential(1).startsWith("1")){
+                  return val.toExponential(1);
+                }else{
+                  return "";
+                }
               }
             }
           }
         }
       }
-    }
-  });
-  
-  flag_graph_complete = true;
+    });
+    
+    flag_graph_complete = true;
+    document.getElementById("message").innerHTML = "";
+  }, 0);
 }
 </script>
 <style>
@@ -268,7 +213,9 @@ Compared Formulae:
 </ul>
 </div>
 <div>
-<button id="btn_benchmark" onclick="startBenchmark()" disabled>Start Benchmark</button> <span id="message">loading...</span>
+<button id="btn_benchmark" onclick="startBenchmark()" disabled>Start Benchmark</button>
+<button id="btn_drawgraph" onclick="showResultGraph()" disabled>Draw Graph</button>
+<span id="message">loading...</span>
 <div id="result"></div>
 <div><canvas id="chart"></canvas></div>
 </div>

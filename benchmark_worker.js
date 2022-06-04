@@ -58,7 +58,7 @@ async function loadTestData(){
 }
 
 /**
- * 関数のベンチマークを行う
+ * 1関数のベンチマークを行う
  */
 function benchmarkFunction(funcname){
   const f = window[funcname];
@@ -70,9 +70,69 @@ function benchmarkFunction(funcname){
   }
   const time = performance.now() - start;
   
-  console.log(`${funcname}: ${time}`);
+  console.log(`${funcname}: ${time.toFixed(2)}`);
   return {
     dist: dist,
     time: time
   };
+}
+
+/**
+ * 複数の関数のベンチマークを行う
+ */
+function startBenchmark(TIME_N, result, ERR_BIN_START, ERR_BIN_END){
+  const funcs = [
+    "geographiclib",
+    "haversine", 
+    "gsidistance", 
+    "hubeny", /*"hubeny1", "hubeny2", "hubeny3", */"hubeny4", 
+    "vincenty", 
+    "lambert", "andoyerlambert", "andoyerlambertthomas"
+  ];
+  
+  for(const f of funcs){
+    result[f] = result[f] || {
+      times: [],
+      dist: null,
+      errors: {}
+    };
+  }
+  
+  for(let i = 0; i < TIME_N; i++){
+    for(const f of funcs){
+      const r = benchmarkFunction(f);
+      result[f].times.push(r.time);
+      result[f].dist = r.dist;
+    }
+  }
+  
+  for(const f of funcs){
+    result[f].errors = analyseError(result[f].dist, ERR_BIN_START, ERR_BIN_END);
+  }
+  
+  return result;
+}
+
+/**
+ * 誤差を解析
+ */
+function analyseError(dist, ERR_BIN_START, ERR_BIN_END){
+  let error_abs = new Array(ERR_BIN_END - ERR_BIN_START + 1);
+  let error_rel = new Array(ERR_BIN_END - ERR_BIN_START + 1);
+  
+  for(let i = 0; i < testdata.length; i++){
+    let err1 = Math.abs(dist[i] - testdata[i][6]);
+    let err2 = err1 / testdata[i][6];
+    let idx = Math.floor(Math.log10(testdata[i][6])) - ERR_BIN_START;
+    
+    if(!error_abs[idx]) error_abs[idx] = -1;
+    if(!error_rel[idx]) error_rel[idx] = -1;
+    if(err1 > error_abs[idx]) error_abs[idx] = err1;
+    if(err2 > error_rel[idx]) error_rel[idx] = err2;
+  }
+  
+  return {
+    error_abs,
+    error_rel
+  }
 }
