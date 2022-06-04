@@ -62,7 +62,7 @@ function showResultTable(){
   
   for(const f in result){
     buf.push("<tr><td class='center'>" + f + "</td>");
-    buf.push("<td class='right'>" + (result[f].times.reduce((i,a)=>i+a) / result[f].times.length).toFixed(1) + "</td>");
+    buf.push("<td class='right'>" + (result[f].times.reduce((i,a)=>i+a) / result[f].times.length).toFixed(2) + "</td>");
     for(let i = 0; i <= ERR_BIN_END - ERR_BIN_START; i++){
       if(result[f].errors.error_rel[i]){
         buf.push("<td>" + result[f].errors.error_rel[i].toExponential(3) + "</td>");
