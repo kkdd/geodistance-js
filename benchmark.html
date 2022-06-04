@@ -50,7 +50,7 @@ function showResultTable(){
   let N = null;
   
   buf.push("<table>");
-  buf.push("<table><tr><th>name</th><th>average time [ms]</th>");
+  buf.push("<table><tr><th>name</th><th>average time [ms]</th><th>std dev [ms]</th>");
   for(let i = ERR_BIN_START; i <= ERR_BIN_END; i++){
     if(i <= 0){
       buf.push(`<th>${Math.pow(10,i).toPrecision(1)}m-</th>`);
@@ -62,7 +62,10 @@ function showResultTable(){
   
   for(const f in result){
     buf.push("<tr><td class='center'>" + f + "</td>");
-    buf.push("<td class='right'>" + (result[f].times.reduce((i,a)=>i+a) / result[f].times.length).toFixed(2) + "</td>");
+    const avg = result[f].times.reduce((i, a) => i + a) / result[f].times.length;
+    const stddev = Math.sqrt(result[f].times.map((i) => (i - avg) ** 2).reduce((i, a) => i + a) / result[f].times.length);
+    buf.push("<td class='right'>" + avg.toFixed(2) + "</td>");
+    buf.push("<td class='right'>" + stddev.toFixed(2) + "</td>");
     for(let i = 0; i <= ERR_BIN_END - ERR_BIN_START; i++){
       if(result[f].errors.error_rel[i]){
         buf.push("<td>" + result[f].errors.error_rel[i].toExponential(3) + "</td>");

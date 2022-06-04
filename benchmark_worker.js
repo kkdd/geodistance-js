@@ -1,3 +1,4 @@
+"use strict";
 let window = self; // geographiclib用
 const testdata = [];
 

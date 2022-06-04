@@ -1,4 +1,5 @@
 function andoyerlambert(lat1, lon1, lat2, lon2){
+  "use strict";
   const a = 6378137.0;
   const f = 1 / 298.257223563;
   const degree = Math.PI / 180.0;

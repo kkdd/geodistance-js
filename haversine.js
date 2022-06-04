@@ -1,4 +1,5 @@
 function haversine(lat1, lon1, lat2, lon2){
+  "use strict";
   const degree = 0.017453292519943295;
   const rlat1 = lat1 * degree;
   const rlon1 = lon1 * degree;
