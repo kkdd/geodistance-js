@@ -63,7 +63,7 @@ function showResultTable(){
   for(const f in result){
     buf.push("<tr><td class='center'>" + f + "</td>");
     const avg = result[f].times.reduce((i, a) => i + a) / result[f].times.length;
-    const stddev = Math.sqrt(result[f].times.map((i) => (i - avg) ** 2).reduce((i, a) => i + a) / result[f].times.length);
+    const stddev = Math.sqrt(result[f].times.reduce((i, a) => i + (a - avg) ** 2, 0) / result[f].times.length);
     buf.push("<td class='right'>" + avg.toFixed(2) + "</td>");
     buf.push("<td class='right'>" + stddev.toFixed(2) + "</td>");
     for(let i = 0; i <= ERR_BIN_END - ERR_BIN_START; i++){
