@@ -7,7 +7,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 "use strict";
-const TIME_N = 5; // number of times for benchmark repeat
 let ERR_BIN_START =  0;
 let ERR_BIN_END   =  0;
 let result = {};
@@ -35,7 +34,7 @@ async function startBenchmark(){
     };
     worker.postMessage({
       func: "startBenchmark",
-      args: [TIME_N, result, ERR_BIN_START, ERR_BIN_END]
+      args: [document.getElementById("input_benchmark_n").value - 0, result, ERR_BIN_START, ERR_BIN_END]
     });
   });
   
@@ -216,6 +215,7 @@ Compared Formulae:
 </ul>
 </div>
 <div>
+N: <input id="input_benchmark_n" type="number" min="1" max="100" value="5">
 <button id="btn_benchmark" onclick="startBenchmark()" disabled>Start Benchmark</button>
 <button id="btn_drawgraph" onclick="showResultGraph()" disabled>Draw Graph</button>
 <span id="message">loading...</span>
