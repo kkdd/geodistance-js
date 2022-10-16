@@ -13,6 +13,7 @@ importScripts(
   "hubeny_series.js",
   "gsidistance.js",
   "vincenty.js",
+  "garmin.js",
   "lambert.js",
   "andoyerlambert.js",
   "andoyerlambertthomas.js",
@@ -87,7 +88,7 @@ function startBenchmark(TIME_N, result, ERR_BIN_START, ERR_BIN_END){
     "haversine", 
     "gsidistance", 
     "hubeny", /*"hubeny1", "hubeny2", "hubeny3", */"hubeny4", 
-    "vincenty", 
+    "vincenty", "garmin",
     "lambert", "andoyerlambert", "andoyerlambertthomas"
   ];
   
