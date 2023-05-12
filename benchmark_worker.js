@@ -88,7 +88,7 @@ function startBenchmark(TIME_N, result, ERR_BIN_START, ERR_BIN_END){
     "haversine", 
     "gsidistance", 
     "hubeny", /*"hubeny1", "hubeny2", "hubeny3", */"hubeny4", 
-    "vincenty", "garmin",
+    "vincenty", //"garmin",
     "lambert", "andoyerlambert", "andoyerlambertthomas"
   ];
   
