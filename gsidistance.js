@@ -1,3 +1,8 @@
+/*
+Total Inverse Solutions for the Geodesic and Great Elliptic,
+B. R. Bowring, Survey Review, 33, 261 (July 1996), 461–476.
+*/
+
 function gsidistance(lat1, lon1, lat2, lon2){
   "use strict";
   const a = 6378137.0;
