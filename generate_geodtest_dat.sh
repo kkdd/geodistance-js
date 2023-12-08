@@ -1,6 +1,6 @@
 #!/bin/sh
 # using GeodSolve (GeographicLib Utilities)
-step=1  # in degree
+step=10  # in degree
 dist_max=19970000  # in meter
 
 for dist_exponent in $(seq 0 7); do
