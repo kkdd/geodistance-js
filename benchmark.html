@@ -9,17 +9,24 @@
 "use strict";
 let ERR_BIN_START =  0;
 let ERR_BIN_END   =  0;
+let ERR_BIN_DIV =  0;
 let result = {};
 let testdata = [];
 let flag_graph_complete = false;
+let distance_min = -1;
+let distance_max = -1;
 
 const worker = new Worker("benchmark_worker.js");
 
 worker.onmessage = function(e){
   document.getElementById("btn_benchmark").disabled = false;
   document.getElementById("message").innerHTML = "";
-  ERR_BIN_START = Math.floor(Math.log10(e.data.distance_min));
-  ERR_BIN_END = Math.floor(Math.log10(e.data.distance_max));
+  distance_min = e.data.distance_min;
+  distance_max = e.data.distance_max;
+
+  ERR_BIN_DIV = Math.floor(30/(Math.log10(distance_max/distance_min)+1)+120);
+  ERR_BIN_START = Math.floor(Math.log10(distance_min)*ERR_BIN_DIV);
+  ERR_BIN_END = Math.floor(Math.log10(distance_max)*ERR_BIN_DIV);
   testdata = e.data.testdata;
 };
 worker.postMessage({func: "loadTestData", args: []});
@@ -34,56 +41,45 @@ async function startBenchmark(){
     };
     worker.postMessage({
       func: "startBenchmark",
-      args: [document.getElementById("input_benchmark_n").value - 0, result, ERR_BIN_START, ERR_BIN_END]
+      args: [document.getElementById("benchmark_n_repeat_input").value - 0, result, ERR_BIN_START, ERR_BIN_END, ERR_BIN_DIV]
     });
   });
   
+  for(const f in result){
+    const avg = result[f].times.reduce((i, a) => i + a) / result[f].times.length;
+  }
+  showResultGraph();
+	
   showResultTable(result);
   document.getElementById("btn_benchmark").disabled = false;
-  document.getElementById("btn_drawgraph").disabled = false;
   document.getElementById("message").innerHTML = "";
 }
 
 function showResultTable(){
+ 
   const buf = []
   let N = null;
   
   buf.push("<table>");
-  buf.push("<table><tr><th>name</th><th>average time [ms]</th><th>std dev [ms]</th>");
-  for(let i = ERR_BIN_START; i <= ERR_BIN_END; i++){
-    if(i <= 0){
-      buf.push(`<th>${Math.pow(10,i).toPrecision(1)}m-</th>`);
-    }else{
-      buf.push(`<th>${Math.pow(10,i)}m-</th>`);
-    }
-  }
+  buf.push("<table><tr><th>formula</th><th>mean calculation time [ms]</th>");
   buf.push("</tr>");
-  
+
   for(const f in result){
     buf.push("<tr><td class='center'>" + f + "</td>");
-    const avg = result[f].times.reduce((i, a) => i + a) / result[f].times.length;
-    const stddev = Math.sqrt(result[f].times.reduce((i, a) => i + (a - avg) ** 2, 0) / result[f].times.length);
+    const avg = result[f].times.reduce((i, a) => i + a) / result[f].times.length;  	
     buf.push("<td class='right'>" + avg.toFixed(2) + "</td>");
-    buf.push("<td class='right'>" + stddev.toFixed(2) + "</td>");
-    for(let i = 0; i <= ERR_BIN_END - ERR_BIN_START; i++){
-      if(result[f].errors.error_rel[i]){
-        buf.push("<td>" + result[f].errors.error_rel[i].toExponential(3) + "</td>");
-      }else{
-        buf.push("<td></td>");
-      }
-    }
     buf.push("</tr>");
     
     N = N || result[f].times.length;
   }
   
   buf.push("</table>");
-  buf.unshift(`<p>Calculation Time (N=${N}) and Relative Error</p>`);
   
   document.getElementById("result").innerHTML = buf.join("");
 }
 
-async function showResultGraph(){
+
+function showResultGraph(){
   const labels = [];
   const datasets = [];
   const colors = ["#3f3d99", "#993d70", "#998b3d", "#3d9955", "#3d5a99", "#993d8f", "#996c3d", "#43993d", "#3d7899", "#833d99", "#994e3d", "#61993d"];
@@ -92,16 +88,12 @@ async function showResultGraph(){
   if(flag_graph_complete){
     return;
   }
-  document.getElementById("message").innerHTML = "drawing graph...";
   
   setTimeout(() => {
     for(let i = ERR_BIN_START; i <= ERR_BIN_END; i++){
-      if(i <= 0){
-        labels.push(Math.pow(10,i));
-      }else{
-        labels.push(Math.pow(10,i));
-      }
+	  labels.push(Math.pow(10,i/ERR_BIN_DIV));
     }
+	
     let j = 0;
     
     for(const f in result){
@@ -112,24 +104,30 @@ async function showResultGraph(){
       dataset.pointStyle = shapes[Math.floor(j / 4) % shapes.length];
       dataset.borderColor = dataset.backgroundColor;
       dataset.data = [];
-      for(let i = 0; i < testdata.length; i += 1){
+      for(let i = 0; i <= ERR_BIN_END - ERR_BIN_START; i++){
+		
+		if(result[f].errors.error_rel[i]){
         dataset.data.push([
-          testdata[i][6],
-          (result[f].dist[i] / testdata[i][6]) - 1
+          Math.pow(10,(i+ERR_BIN_START)/ERR_BIN_DIV),
+          Math.abs(result[f].errors.error_rel[i])
         ]);
-      }
-      
+		}
+	  }
+ 
       j++;
       datasets.push(dataset);
     }
     
+    const margin_plot = (distance_min==distance_max)?2.0:Math.max(1.02, Math.pow(distance_max/distance_min, 0.03));
+
     const chart = new Chart(document.getElementById("chart"), {
-      type: "scatter",
+      type: "line",
       data: {
         labels: labels,
         datasets: datasets
       },
       options: {
+		borderWidth: 1,
         plugins: {
           tooltip: {
             enabled: false
@@ -146,18 +144,20 @@ async function showResultGraph(){
             type: "logarithmic",
             title: {
               display: true,
-              text: "True Distance [m]"
-            }
+              text: "Distance [m]"
+            },
+            min: distance_min / margin_plot,
+            max: distance_max * margin_plot,
           },
           y: {
             display: true,
             type: "logarithmic",
             title: {
               display: true,
-              text: "Relative Error"
+              text: "Maximum Relative Error in Distance"
             },
             min: 1e-16,
-            max: 1e1,
+            max: 3e0,
             ticks: {
               callback: (val, index) => {
                 if(val.toExponential(1).startsWith("1")){
@@ -173,9 +173,10 @@ async function showResultGraph(){
     });
     
     flag_graph_complete = true;
-    document.getElementById("message").innerHTML = "";
   }, 0);
 }
+
+
 </script>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-4RTVKDCC9W"></script>
@@ -204,29 +205,28 @@ th, td {
   text-align: right;
 }
 </style>
-<body>
-<h1>Geodesic Distance Calculation Formulae Benchmark in JavaScript</h1>
-<p>
-Compare calculation speed and precision for geodesic ellipsoid distance calculation functions implemented in JavaScript.
-</p>
+<body bgcolor="#f0f0e8">
+<h3>Benchmark of Geodesic Distance Formulae</h3>
 <div>
-Compared Formulae:
+Compared Formulae implemented in JavaScript:
 <ul>
-<li>GeographicLib: the most accurate calculation library. <a href="https://geographiclib.sourceforge.io/">GeographicLib</a>
-<li>Haversine: <a href="https://en.wikipedia.org/wiki/Great-circle_distance">Great-circle distance - Wikipedia</a>
-<li>GSI: Used by GSI(Geospatial Information Authority of Japan) distance calculation service, based on Bowring's method, <a href="https://vldb.gsi.go.jp/sokuchi/surveycalc/surveycalc/algorithm/bl2st/bl2st.htm">距離と方位角の計算　計算式</a>
-<li>Hubeny:  Simplified version of hubeny's formula, <a href="https://www.koeki-prj.org/~yuuji/2017/gd2/06/distances.html">Calculating Distance between Two Points - #7 Game Design 2017</a>
-<li>Hubeny4: Full version of hubeny's formula, <a href="https://amano-tec.com/apps/paceruler.html">歩測計 Pace Ruler - ASTI アマノ技研</a>
-<li>Vincenty: <a href="https://en.wikipedia.org/wiki/Geographical_distance#Lambert's_formula_for_long_lines">Geographical distance - Wikipedia</a>
-<li>Lambert: <a href="https://dl.ndl.go.jp/info:ndljp/pid/11000306">回転楕円体上の測地線及び航程線の算出について - 国立国会図書館デジタルコレクション</a>
-<li>Andoyer-Lambert: <a href="https://web.archive.org/web/20160411010136/http://www2.nc-toyama.ac.jp/~mkawai/lecture/sailing/geodetic/geosail.html">測地線航海算法(Geodesic Sailing)</a>
-<li>Andoyer-Lambert-Thomas: <a href="https://metacpan.org/pod/GIS::Distance::ALT">GIS::Distance::ALT - Andoyer-Lambert-Thomas distance calculations. - metacpan.org</a>
+<li>Spherical: Menelaus of Alexandria (about 100); <a href="https://en.wikipedia.org/wiki/Great-circle_distance">Great-circle distance - Wikipedia</a>
+<li>Flat-surface-ellipsoidal: Newton (?), Cassini (1713); <a href="https://en.wikipedia.org/wiki/Geographical_distance#Ellipsoidal_Earth_projected_to_a_plane">Geographical distance - Wikipedia</a>
+<li>Hubeny: Hubeny (1954, 1959)
+<li>Gauss-mid-latitude: Gauss (1843, 1846); Lambert and Swick (1935); <a href="https://kb.osu.edu/items/5cfd1585-a92a-5933-9469-366a5d6b6894">Rapp (1991)</a> §6.4; <a href="https://en.wikipedia.org/wiki/Geographical_distance#Gauss_mid-latitude_method_for_short_lines">Geographical distance - Wikipedia</a>
+<li>Andoyer: <a href="https://doi.org/10.1007/BF03030136">Andoyer (1932)</a>; <a href="https://en.wikipedia.org/wiki/Marie_Henri_Andoyer#Publications">Marie Henri Andoyer - Wikipedia</a>
+<li>Andoyer-Lambert: Lambert (1942); <a href="https://apps.dtic.mil/sti/tr/pdf/AD0627893.pdf">Thomas (1965)</a>; <a href="https://en.wikipedia.org/wiki/Geographical_distance#Lambert's_formula_for_long_lines">Geographical distance - Wikipedia</a>
+<li>Andoyer-Lambert-Thomas: <a href="https://apps.dtic.mil/sti/tr/pdf/AD0703541.pdf">Thomas (1970)</a>
+<li>(Pittman: Pittman (1986);
+	<a href="https://www.researchgate.net/publication/280099320_GEODESICS_ON_AN_ELLIPSOID_-_PITTMAN'S_METHOD">Deakin and Hunter (2007, 2010)</a>; not tested)
+<li>Vincenty: Vincentry (1975, 1976); <a href="https://dl.ndl.go.jp/info:ndljp/pid/11000306">回転楕円体上の測地線及び航程線の算出について（海洋情報部研究報告） - 国立国会図書館デジタルコレクション</a> in Japanese
+<li>Bowring: Bowring (1996); used by Geospatial Information Authority of Japan (GSI) based on this method, <a href="https://vldb.gsi.go.jp/sokuchi/surveycalc/surveycalc/algorithm/bl2st/bl2st.htm">経緯度を用いた2地点間の測地線長、方位角を求める計算（国土地理院）</a> in Japanese
+<li>Karney: Karney (2011); <a href="https://geographiclib.sourceforge.io/">GeographicLib</a>
 </ul>
 </div>
 <div>
-N: <input id="input_benchmark_n" type="number" min="1" max="100" value="5">
+n_repeat: <input id="benchmark_n_repeat_input" type="number" min="1" max="100" value="1">
 <button id="btn_benchmark" onclick="startBenchmark()" disabled>Start Benchmark</button>
-<button id="btn_drawgraph" onclick="showResultGraph()" disabled>Draw Graph</button>
 <span id="message">loading...</span>
 <div id="result"></div>
 <div><canvas id="chart"></canvas></div>
