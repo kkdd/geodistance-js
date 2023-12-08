@@ -8,6 +8,7 @@ addEventListener("message", async function(e){
 
 importScripts(
   "andoyer.js",
+  "andoyerlambert.js",
 );
 //  "karney.js",
 
@@ -67,6 +68,8 @@ function startBenchmark(TIME_N, result, ERR_BIN_START, ERR_BIN_END, ERR_BIN_DIV)
   const funcs = [
     "andoyer",
     "andoyer_using_cosine_law",
+    "andoyerlambert",
+    "andoyerlambert_using_cosine_law",
   ];
 //    "karney",
 
