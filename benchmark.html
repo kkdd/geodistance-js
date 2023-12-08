@@ -56,28 +56,18 @@ async function startBenchmark(){
 }
 
 function showResultTable(){
- 
   const buf = []
-  let N = null;
-  
-  buf.push("<table>");
-  buf.push("<table><tr><th>formula</th><th>mean calculation time [ms]</th>");
-  buf.push("</tr>");
-
+  buf.push("<font size=\"-1\"><table>");
+  buf.push("<table><tr><th>formula</th><th>mean calculation time [ms]</th></tr>");
   for(const f in result){
     buf.push("<tr><td class='center'>" + f + "</td>");
     const avg = result[f].times.reduce((i, a) => i + a) / result[f].times.length;  	
     buf.push("<td class='right'>" + avg.toFixed(2) + "</td>");
     buf.push("</tr>");
-    
-    N = N || result[f].times.length;
   }
-  
-  buf.push("</table>");
-  
+  buf.push("</table></font>");
   document.getElementById("result").innerHTML = buf.join("");
 }
-
 
 function showResultGraph(){
   const labels = [];
