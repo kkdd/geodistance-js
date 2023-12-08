@@ -1,28 +1,18 @@
 "use strict";
-let window = self; // geographiclib用
+let window = self; // for karney
 const testdata = [];
 
 addEventListener("message", async function(e){
-  //console.log(e.data);
   postMessage(await (self[e.data.func](...e.data.args)));
 });
 
 importScripts(
-  "haversine.js",
-  "hubeny_simple.js",
-  "hubeny_series.js",
-  "gsidistance.js",
-  "vincenty.js",
-  "garmin.js",
-  "lambert.js",
-  "andoyerlambert.js",
-  "andoyerlambertthomas.js",
-  "andoyerlambertono.js",
-  "geographiclib.js"
+  "andoyer.js",
 );
+//  "karney.js",
 
-// wrapper for geographiclib.js
-self.geographiclib = (function(){
+// wrapper for karney
+self.karney = (function(){
   const geod = GeographicLib.Geodesic.WGS84;
   
   return function(lat1, lon1, lat2, lon2){
@@ -30,12 +20,9 @@ self.geographiclib = (function(){
   };
 })();
 
-/**
- * テストデータ読み込み
- */
 async function loadTestData(){
-//  const response = await fetch("./GeodTest.dat"); // GitHub limit over
-  const response = await fetch("./GeodTest-short.dat");
+
+  const response = await fetch("./GeodTest_for_distance.dat");
   const text = await response.text();
   
   const lines = text.split(/\n/);
@@ -56,14 +43,10 @@ async function loadTestData(){
     if(testdata[i][6] < distance_min) distance_min = testdata[i][6];
     if(distance_max < testdata[i][6]) distance_max = testdata[i][6];
   }
-  
   return {testdata, distance_min, distance_max};
 }
 
-/**
- * 1関数のベンチマークを行う
- */
-function benchmarkFunction(funcname){
+function benchmark_for_func(funcname){
   const f = window[funcname];
   const dist = [];
   const start = performance.now();
@@ -80,19 +63,13 @@ function benchmarkFunction(funcname){
   };
 }
 
-/**
- * 複数の関数のベンチマークを行う
- */
-function startBenchmark(TIME_N, result, ERR_BIN_START, ERR_BIN_END){
+function startBenchmark(TIME_N, result, ERR_BIN_START, ERR_BIN_END, ERR_BIN_DIV){
   const funcs = [
-    "geographiclib",
-    "haversine", 
-    "gsidistance", 
-    "hubeny", /*"hubeny1", "hubeny2", "hubeny3", */"hubeny4", 
-    "vincenty", //"garmin",
-    "lambert", "andoyerlambert", "andoyerlambertthomas"//, "andoyerlambertono"
+    "andoyer",
+    "andoyer_using_cosine_law",
   ];
-  
+//    "karney",
+
   for(const f of funcs){
     result[f] = result[f] || {
       times: [],
@@ -103,37 +80,36 @@ function startBenchmark(TIME_N, result, ERR_BIN_START, ERR_BIN_END){
   
   for(let i = 0; i < TIME_N; i++){
     for(const f of funcs){
-      const r = benchmarkFunction(f);
+      const r = benchmark_for_func(f);
       result[f].times.push(r.time);
       result[f].dist = r.dist;
     }
   }
   
   for(const f of funcs){
-    result[f].errors = analyseError(result[f].dist, ERR_BIN_START, ERR_BIN_END);
+    result[f].errors = analyseError(f, result[f].dist, ERR_BIN_START, ERR_BIN_END, ERR_BIN_DIV);
   }
   
   return result;
 }
 
-/**
- * 誤差を解析
- */
-function analyseError(dist, ERR_BIN_START, ERR_BIN_END){
+function analyseError(f, dist, ERR_BIN_START, ERR_BIN_END, ERR_BIN_DIV){
   let error_abs = new Array(ERR_BIN_END - ERR_BIN_START + 1);
   let error_rel = new Array(ERR_BIN_END - ERR_BIN_START + 1);
-  
+    
   for(let i = 0; i < testdata.length; i++){
     let err1 = Math.abs(dist[i] - testdata[i][6]);
     let err2 = err1 / testdata[i][6];
-    let idx = Math.floor(Math.log10(testdata[i][6])) - ERR_BIN_START;
+    let idx = Math.floor(Math.log10(testdata[i][6])*ERR_BIN_DIV) - ERR_BIN_START;
     
+    if (err2 > 0.86) {console.log(f, testdata[i])}
+
     if(!error_abs[idx]) error_abs[idx] = -1;
     if(!error_rel[idx]) error_rel[idx] = -1;
     if(err1 > error_abs[idx]) error_abs[idx] = err1;
     if(err2 > error_rel[idx]) error_rel[idx] = err2;
   }
-  
+ 
   return {
     error_abs,
     error_rel
