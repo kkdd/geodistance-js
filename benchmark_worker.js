@@ -108,7 +108,7 @@ function analyseError(f, dist, ERR_BIN_START, ERR_BIN_END, ERR_BIN_DIV){
     let err2 = err1 / testdata[i][6];
     let idx = Math.floor(Math.log10(testdata[i][6])*ERR_BIN_DIV) - ERR_BIN_START;
     
-    if (err2 > 0.86) {console.log(f, testdata[i])}
+    if (err2 > 0.86 || isNaN(err2)) {console.log(f, testdata[i])}
 
     if(!error_abs[idx]) error_abs[idx] = -1;
     if(!error_rel[idx]) error_rel[idx] = -1;
