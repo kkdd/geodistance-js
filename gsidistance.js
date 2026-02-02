@@ -1,3 +1,8 @@
+/*
+Total Inverse Solutions for the Geodesic and Great Elliptic,
+B. R. Bowring, Survey Review, 33, 261 (July 1996), 461–476.
+*/
+
 function gsidistance(lat1, lon1, lat2, lon2){
   "use strict";
   const a = 6378137.0;
@@ -18,8 +23,6 @@ function gsidistance(lat1, lon1, lat2, lon2){
   const lp = (((l + 180) % 360) - 180) * degree;
   const L = abs(lp);
   const Lp = PI - L;
-  const Delta = ((lp >= 0) ? lat2 - lat1 : lat1 - lat2) * degree;
-  const Sigma = (lat1 + lat2) * degree;
   const u1 = (lp >= 0) ? atan((1 - f) * tan(lat1 * degree)) : atan((1 - f) * tan(lat2 * degree));
   const u2 = (lp >= 0) ? atan((1 - f) * tan(lat2 * degree)) : atan((1 - f) * tan(lat1 * degree));
   const Sigmap = u1 + u2;
@@ -34,17 +37,15 @@ function gsidistance(lat1, lon1, lat2, lon2){
   const c = y * cos(L) + x;
   const epsilon = f * (2 - f) / ((1 - f) * (1 - f));
   
-  let ZONE = 0;
-  let theta0 = 0.0;
+  let ZONE = 1;
+  let theta0 = Lp;
   
   if(c >= 0){
     // Zone 1
-    ZONE = 1;
     theta0 = L * (1 + f * y);
   }else if((0 > c) && (c >= -cos(3 * degree * cos(u1)))){
     // Zone 2
     ZONE = 2;
-    theta0 = Lp;
   }else{
     // Zone 3
     ZONE = 3;
@@ -55,7 +56,7 @@ function gsidistance(lat1, lon1, lat2, lon2){
     const f1 = 0.25 * f * (1 + 0.5 * f);
     const gamma0 = q + f1 * q - f1 * q * q * q;
     
-    if(Sigma != 0.0){
+    if(Sigmap != 0.0){
       // Zone 3a
       const A0 = atan(d1 / d2);
       const B0 = asin(R / sqrt(d1 * d1 + d2 * d2));
@@ -63,14 +64,14 @@ function gsidistance(lat1, lon1, lat2, lon2){
       const j = gamma0 / cos(u1);
       const k = (1 + f1) * abs(Sigmap) * (1 - f * y) / (f * PI * y);
       const j1 = j / (1 + k / cos(psi));
-      const psip = asin(j1);
-      const psipp = asin(cos(u1) * j1 / cos(u2));
-      theta0 = 2 * atan(tan(0.5 * (psip + psipp)) * sin(0.5 * abs(Sigmap)) / cos(0.5 * Deltap));
+      if (j1 < 1) {
+        const psip = asin(j1);
+        const psipp = asin(cos(u1) * j1 / cos(u2));
+        theta0 = 2 * atan(tan(0.5 * (psip + psipp)) * sin(0.5 * abs(Sigmap)) / cos(0.5 * Deltap));
+      }
     }else{
       if(d1 > 0){
-        // Zone 3b1
-        theta0 = Lp;
-        
+        // Zone 3b1       
       }else if(d1 == 0.0){
         // Zone 3b2
         const Gamma = sin(u2) ** 2;
@@ -78,7 +79,6 @@ function gsidistance(lat1, lon1, lat2, lon2){
         const A = (1 + n0) * (1 + 1.25 * n0 * n0);
         
         return (1 - f) * a * A * PI;
-        
       }else{
         // Zone 3b3
         let gamma = gamma0;
@@ -102,7 +102,6 @@ function gsidistance(lat1, lon1, lat2, lon2){
         const A = (1 + n0) * (1 + 1.25 * n0 * n0);
         
         return (1 - f) * a * A * PI;
-        
       }
     }
   }
