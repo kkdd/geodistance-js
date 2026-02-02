@@ -58,7 +58,7 @@ function gsidistance(lat1, lon1, lat2, lon2){
     const f1 = 0.25 * f * (1 + 0.5 * f);
     const gamma0 = q + f1 * q - f1 * q * q * q;
     
-    if(Sigma != 0.0){
+    if(Sigmap != 0.0){
       // Zone 3a
       const A0 = atan(d1 / d2);
       const B0 = asin(R / sqrt(d1 * d1 + d2 * d2));
