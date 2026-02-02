@@ -23,8 +23,6 @@ function gsidistance(lat1, lon1, lat2, lon2){
   const lp = (((l + 180) % 360) - 180) * degree;
   const L = abs(lp);
   const Lp = PI - L;
-  const Delta = ((lp >= 0) ? lat2 - lat1 : lat1 - lat2) * degree;
-  const Sigma = (lat1 + lat2) * degree;
   const u1 = (lp >= 0) ? atan((1 - f) * tan(lat1 * degree)) : atan((1 - f) * tan(lat2 * degree));
   const u2 = (lp >= 0) ? atan((1 - f) * tan(lat2 * degree)) : atan((1 - f) * tan(lat1 * degree));
   const Sigmap = u1 + u2;
